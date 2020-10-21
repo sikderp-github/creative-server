@@ -1,30 +1,37 @@
 const express = require('express')
-const bodyParser = require('body-parser');
-const cors = require('cors');
+const bodyParser = require('body-parser')
+var cors = require('cors')
 const fileUpload = require('express-fileupload');
 const MongoClient = require('mongodb').MongoClient;
-require('dotenv').config();
-
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.xw9hf.azure.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`;
-
 
 const app = express()
-app.use(bodyParser.json());
-// app.use(bodyParser.urlencoded({ extended: false }));
-app.use(cors());
-// app.use(express.static('creativedb'));
+app.use(bodyParser.json())
+app.use(cors())
 app.use(fileUpload());
 
-const password = '0vCOX9T5N8BgP4TZ'
-const port = 5000;
+const port = 4000
+// const password = 'FOlHEtQnH2p6VDdJ'
 
+const uri = "mongodb+srv://creativeUser:FOlHEtQnH2p6VDdJ@cluster0.keo8w.gcp.mongodb.net/creativedb?retryWrites=true&w=majority";
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
 
 client.connect(err => {
+    // console.log(err);
     const serviceCollection = client.db("creativedb").collection("services");
-    console.log('database connected');
+    const bookingsCollection = client.db("creativedb").collection("bookServices");
+    const reviewCollection = client.db("creativedb").collection("feedback");
+    const adminCollection = client.db("creativedb").collection("adminPanel");
 
-    // send data to backend server from client site(1)
+    app.post('/addServices', (req, res) => {
+        const service = req.body;
+        serviceCollection.insertMany(service)
+            .then(result => {
+                res.send(result.insertedCount > 0);
+
+            })
+    });
+
+    // send data to server
     app.post('/addServices1', (req, res) => {
         const file = req.files.file;
         const title = req.body.title;
@@ -38,45 +45,102 @@ client.connect(err => {
             size: file.size,
             img: Buffer.from(encImg, 'base64')
         };
-        console.log(title, description, image);
 
-        serviceCollection.insertOne({ title, description, image })
-            .then(result => {
-                console.log(result);
-                res.send(result.insertedCount > 0);
+        serviceCollection.insertOne({ title, image, description })
+            .then(response => {
+                res.send(response.insertedCount > 0)
             })
     })
 
-    app.post('/addServices', (req, res) => {
-        console.log(req.body);
-        const service = req.body;
-        serviceCollection.insertOne(service)
-            .then(result => {
-                console.log(result);
-                res.send(result.insertedCount > 0)
+    app.post('/orderServices', (req, res) => {
+        const file = req.files.file;
+        const name = req.body.name;
+        const email = req.body.email;
+        const bkService = req.body.bkService;
+        const description = req.body.description;
+        const price = req.body.price;
+
+        const newImg = file.data;
+        const encImg = newImg.toString('base64');
+
+        var image = {
+            contentType: file.mimetype,
+            size: file.size,
+            img: Buffer.from(encImg, 'base64')
+        };
+        bookingsCollection.insertOne({ name, email, bkService, description, price, image })
+            .then(results => {
+                res.send(results.insertedCount > 0);
+            })
+    })
+
+    app.post('/addReview', (req, res) => {
+        const file = req.files.file;
+        const name = req.body.name;
+        const company = req.body.company;
+        const description = req.body.description;
+
+        const newImg = file.data;
+        const encImg = newImg.toString('base64');
+
+        var image = {
+            contentType: file.mimetype,
+            size: file.size,
+            img: Buffer.from(encImg, 'base64')
+        };
+        reviewCollection.insertOne({ name, company, description, image })
+            .then(results => {
+                res.send(results.insertedCount > 0);
+            })
+    })
+
+    app.post('/addAdmin', (req, res) => {
+        const email = req.body;
+        adminCollection.insertOne(email)
+            .then(result1 => {
+                res.send(result1.insertedCount > 0);
+
             })
     });
 
-    // app.get('/appointments', (req, res) => {
-    //     appointmentCollection.find({})
-    //         .toArray((err, documents) => {
-    //             res.send(documents);
-    //         })
-    // })
-    // app.post('/addAppointment', (req, res) => {
-    //     const appointment = req.body;
-    //     appointmentCollection.insertOne(appointment)
-    //         .then(result => {
-    //             res.send(result.insertedCount > 0)
-    //         })
-    // });
+    app.post('/isAdmin', (req, res) => {
+        const email = req.body.email;
+        // console.log(email);
+        adminCollection.find({ email: email })
+            .toArray((err, admins) => {
+                res.send(admins.length > 0);
+            })
+    })
 
-    // app.get('/appointments', (req, res) => {
-    //     appointmentCollection.find({})
-    //         .toArray((err, documents) => {
-    //             res.send(documents);
-    //         })
-    // })
+
+    app.get('/reviews', (req, res) => {
+        reviewCollection.find({})
+            .toArray((err, documents) => {
+                res.send(documents);
+            })
+    })
+
+    app.get('/services', (req, res) => {
+        serviceCollection.find({})
+            .toArray((err, documents) => {
+                res.send(documents);
+            })
+    })
+
+    app.get('/allbookings', (req, res) => {
+        bookingsCollection.find({})
+            .toArray((err, documents) => {
+                res.send(documents);
+            })
+    })
+
+    app.get('/allAdmin', (req, res) => {
+        adminCollection.find({})
+            .toArray((err, documents1) => {
+                res.send(documents1);
+            })
+    })
+
 
 });
 
@@ -85,5 +149,4 @@ app.get('/', (req, res) => {
     res.send('Hello World! Database is working!')
 })
 
-
-app.listen(process.env.PORT || port)
+app.listen(port)
