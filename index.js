@@ -10,7 +10,6 @@ app.use(cors())
 app.use(fileUpload());
 
 const port = 4000
-// const password = 'FOlHEtQnH2p6VDdJ'
 
 const uri = `mongodb+srv://creativeUser:FOlHEtQnH2p6VDdJ@cluster0.keo8w.gcp.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
@@ -113,6 +112,7 @@ client.connect(err => {
     })
 
 
+    //get data from server
     app.get('/reviews', (req, res) => {
         reviewCollection.find({})
             .toArray((err, documents) => {
